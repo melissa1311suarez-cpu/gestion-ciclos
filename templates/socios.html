@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Socios - Gestión{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+        <h1>👥 Socios</h1>
+        <a href="{{ url_for('nuevo_socio') }}" class="btn">➕ Nuevo socio</a>
+    </div>
+    <div style="overflow-x: auto; margin-top: 1.5rem;">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Nombre</th><th>💰 Fondo disponible</th><th>📊 Total invertido</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                {% for s in socios %}
+                <tr>
+                    <td data-label="ID">{{ s.id }}</td>
+                    <td data-label="Nombre">{{ s.nombre }}</td>
+                    <td data-label="Fondo disponible">${{ "%.2f"|format(s.fondo_disponible) }}</td>
+                    <td data-label="Total invertido">${{ "%.2f"|format(s.fondo_total - s.fondo_disponible) }}</td>
+                    <td data-label="Acciones">
+                        <a href="{{ url_for('detalle_socio', id=s.id) }}" class="btn" style="background:#6366f1;">📋 Ver</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align:center;">No hay socios registrados. <a href="{{ url_for('nuevo_socio') }}">Crear primero</a></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

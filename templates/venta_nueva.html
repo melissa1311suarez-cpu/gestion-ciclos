@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Nueva Venta - Ciclo #{{ ciclo.id }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <h1>🧾 Registrar venta</h1>
+    <p><strong>Producto:</strong> {{ ciclo.producto }} | <strong>Stock restante:</strong> <span id="stockRestante">{{ ciclo.cantidad - total_vendido }}</span> unidades</p>
+    <form method="POST" id="ventaForm">
+        <div style="margin-bottom: 1rem;">
+            <label>Cantidad a vender</label>
+            <input type="number" name="cantidad" id="cantidadVenta" step="1" min="1" required>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Precio unitario de venta ($)</label>
+            <input type="number" name="precio_unitario" id="precioUnitario" step="0.01" required>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Tipo de venta</label>
+            <select name="tipo" id="tipoVenta">
+                <option value="cliente">Cliente (pago inmediato)</option>
+                <option value="pasador">Pasador (pago diferido)</option>
+            </select>
+        </div>
+        <div id="infoPasador" style="background:#fef3c7; padding:1rem; border-radius:12px; display:none;">
+            ⚠️ Venta a pasador: el dinero se registrará como pendiente hasta que el pasador pague.
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 1rem;">
+            <a href="{{ url_for('detalle_ciclo', id=ciclo.id) }}" class="btn-secondary">Cancelar</a>
+            <button type="submit" class="btn">✅ Guardar venta</button>
+        </div>
+    </form>
+</div>
+<script>
+    const stockMax = parseInt(document.getElementById('stockRestante').innerText);
+    const cantidadInput = document.getElementById('cantidadVenta');
+    cantidadInput.max = stockMax;
+    cantidadInput.addEventListener('input', () => {
+        if(cantidadInput.value > stockMax) {
+            showToast(`No puede vender más de ${stockMax} unidades`, 'error');
+            cantidadInput.value = stockMax;
+        }
+    });
+    document.getElementById('tipoVenta').addEventListener('change', function() {
+        const info = document.getElementById('infoPasador');
+        info.style.display = this.value === 'pasador' ? 'block' : 'none';
+    });
+    document.getElementById('ventaForm').addEventListener('submit', (e) => {
+        if(parseFloat(cantidadInput.value) <= 0) {
+            e.preventDefault();
+            showToast('Ingrese una cantidad válida', 'error');
+        }
+    });
+</script>
+{% endblock %}

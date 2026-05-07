@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Registrar pago de pasador{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+    <h1>💰 Cobro a pasador</h1>
+    <p><strong>Venta #{{ venta.id }}</strong> - Ciclo #{{ venta.ciclo_id }}</p>
+    <p>Cantidad: {{ venta.cantidad }} | Total: ${{ "%.2f"|format(venta.total) }}</p>
+    <form method="POST">
+        <button type="submit" class="btn">Confirmar pago recibido</button>
+        <a href="{{ url_for('detalle_ciclo', id=venta.ciclo_id) }}" class="btn-secondary">Cancelar</a>
+    </form>
+</div>
+{% endblock %}

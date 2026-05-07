@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Panel Principal{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center; background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: white;">
+    <h1 style="font-size: 2.5rem;">🔄 Sistema de Gestión por Ciclos</h1>
+    <p style="font-size: 1.2rem; margin-top: 0.5rem;">Compra/Venta con socios y pasadores</p>
+</div>
+
+<div class="grid-cards">
+    <div class="stats-card">
+        <div style="font-size: 3rem;">👥</div>
+        <div class="stats-number">{{ socios_count|default(0) }}</div>
+        <h3>Socios activos</h3>
+        <a href="{{ url_for('listar_socios') }}" class="btn" style="margin-top: 1rem; display: inline-block;">Gestionar</a>
+    </div>
+    <div class="stats-card">
+        <div style="font-size: 3rem;">🔄</div>
+        <div class="stats-number">{{ ciclos_abiertos|default(0) }}</div>
+        <h3>Ciclos abiertos</h3>
+        <a href="{{ url_for('listar_ciclos') }}" class="btn" style="margin-top: 1rem;">Ver ciclos</a>
+    </div>
+    <div class="stats-card">
+        <div style="font-size: 3rem;">💰</div>
+        <div class="stats-number">${{ fondo_total|default(0) }}</div>
+        <h3>Fondo total disponible</h3>
+        <button id="refreshBtn" class="btn-secondary" onclick="showToast('Datos actualizados', 'success')">↻ Actualizar</button>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 1rem;">
+    <h2>📋 Acciones rápidas</h2>
+    <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem;">
+        <a href="{{ url_for('nuevo_ciclo') }}" class="btn">➕ Nuevo ciclo de compra</a>
+        <a href="{{ url_for('nuevo_socio') }}" class="btn btn-secondary">👤 Agregar socio</a>
+    </div>
+</div>
+{% endblock %}

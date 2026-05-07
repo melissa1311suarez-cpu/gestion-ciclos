@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Ciclos de Compra/Venta{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>🔄 Ciclos</h1>
+        <a href="{{ url_for('nuevo_ciclo') }}" class="btn">➕ Nuevo ciclo</a>
+    </div>
+    <div style="overflow-x: auto; margin-top: 1.5rem;">
+        <table>
+            <thead>
+                <tr><th>ID</th><th>Fecha</th><th>Producto</th><th>Proveedor</th><th>Cantidad</th><th>Estado</th><th>Acción</th></tr>
+            </thead>
+            <tbody>
+                {% for c in ciclos %}
+                <tr>
+                    <td data-label="ID">#{{ c.id }}</td>
+                    <td data-label="Fecha">{{ c.fecha_compra[:16] }}</td>
+                    <td data-label="Producto">{{ c.producto }}</td>
+                    <td data-label="Proveedor">{{ c.proveedor }}</td>
+                    <td data-label="Cantidad">{{ c.cantidad }} uds</td>
+                    <td data-label="Estado">
+                        {% if c.estado == 'abierto' %}
+                        <span style="background:#10b98120; padding:4px 12px; border-radius:20px;">🟢 Abierto</span>
+                        {% else %}
+                        <span style="background:#6b728020; padding:4px 12px; border-radius:20px;">🔒 Cerrado</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Acción"><a href="{{ url_for('detalle_ciclo', id=c.id) }}" class="btn" style="background:#6366f1;">Ver detalle</a></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">No hay ciclos creados. <a href="{{ url_for('nuevo_ciclo') }}">Crear primero</a></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

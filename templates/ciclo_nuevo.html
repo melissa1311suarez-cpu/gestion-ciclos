@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Ciclo de Compra{% endblock %}
+{% block content %}
+<div class="card">
+    <h1>➕ Crear nuevo ciclo</h1>
+    <form method="POST" id="formCiclo" onsubmit="return validarAportes()">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div><label>Producto</label><input type="text" name="producto" required></div>
+            <div><label>Proveedor</label><input type="text" name="proveedor" required></div>
+            <div><label>Cantidad de unidades</label><input type="number" name="cantidad" id="cantidad" step="1" min="1" required></div>
+            <div><label>Precio de compra (por unidad)</label><input type="number" name="precio_compra" id="precio_compra" step="0.01" required></div>
+            <div><label>Precio estimado de venta (por unidad)</label><input type="number" name="precio_venta" step="0.01" required></div>
+        </div>
+
+        <hr style="margin: 1.5rem 0;">
+        <h3>💰 Aportes de socios (la suma debe igualar al total de la compra)</h3>
+        <div id="aportes-container">
+            {% for s in socios %}
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                <label style="width: 150px;">{{ s.nombre }}</label>
+                <input type="number" step="0.01" name="aporte_{{ s.id }}" id="aporte_{{ s.id }}" placeholder="$" class="aporte-input" data-id="{{ s.id }}">
+                <span id="disponible_{{ s.id }}" style="font-size:0.8rem; color:gray;">(Fondo: ${{ "%.2f"|format(s.fondo_disponible) }})</span>
+            </div>
+            {% endfor %}
+        </div>
+        <div id="total-compra-msg" style="margin: 1rem 0; font-weight: bold;"></div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <a href="{{ url_for('listar_ciclos') }}" class="btn-secondary">Cancelar</a>
+            <button type="submit" class="btn">Crear ciclo</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function actualizarTotalCompra() {
+        let cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+        let precio = parseFloat(document.getElementById('precio_compra').value) || 0;
+        let totalEsperado = cantidad * precio;
+        let sumaAportes = 0;
+        document.querySelectorAll('.aporte-input').forEach(inp => {
+            sumaAportes += parseFloat(inp.value) || 0;
+        });
+        let msgDiv = document.getElementById('total-compra-msg');
+        if (totalEsperado === 0) {
+            msgDiv.innerHTML = '';
+            return;
+        }
+        if (Math.abs(sumaAportes - totalEsperado) < 0.01) {
+            msgDiv.innerHTML = `✅ Suma de aportes = $${sumaAportes.toFixed(2)} igual al total de compra ($${totalEsperado.toFixed(2)})`;
+            msgDiv.style.color = 'green';
+        } else {
+            msgDiv.innerHTML = `⚠️ Suma de aportes = $${sumaAportes.toFixed(2)} · Total compra = $${totalEsperado.toFixed(2)} · Diferencia: $${(totalEsperado - sumaAportes).toFixed(2)}`;
+            msgDiv.style.color = 'red';
+        }
+    }
+    function validarAportes() {
+        let cantidad = parseFloat(document.getElementById('cantidad').value) || 0;
+        let precio = parseFloat(document.getElementById('precio_compra').value) || 0;
+        let totalEsperado = cantidad * precio;
+        let sumaAportes = 0;
+        document.querySelectorAll('.aporte-input').forEach(inp => {
+            sumaAportes += parseFloat(inp.value) || 0;
+        });
+        if (Math.abs(sumaAportes - totalEsperado) > 0.01) {
+            showToast('La suma de los aportes debe ser igual al total de la compra', 'error');
+            return false;
+        }
+        // Validar fondos disponibles
+        let ok = true;
+        document.querySelectorAll('.aporte-input').forEach(inp => {
+            let socioId = inp.getAttribute('data-id');
+            let aporte = parseFloat(inp.value) || 0;
+            let disponibleSpan = document.getElementById('disponible_' + socioId);
+            let disponibleTexto = disponibleSpan.innerText.match(/[\d\.]+/);
+            let disponible = disponibleTexto ? parseFloat(disponibleTexto[0]) : 0;
+            if (aporte > disponible) {
+                showToast(`El socio no tiene suficiente fondo (requiere $${aporte}, disponible $${disponible})`, 'error');
+                ok = false;
+            }
+        });
+        return ok;
+    }
+    document.getElementById('cantidad').addEventListener('input', actualizarTotalCompra);
+    document.getElementById('precio_compra').addEventListener('input', actualizarTotalCompra);
+    document.querySelectorAll('.aporte-input').forEach(inp => inp.addEventListener('input', actualizarTotalCompra));
+    actualizarTotalCompra();
+</script>
+{% endblock %}

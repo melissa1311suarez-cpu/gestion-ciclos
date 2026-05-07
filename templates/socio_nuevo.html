@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Socio{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 500px; margin: 0 auto;">
+    <h1>➕ Crear nuevo socio</h1>
+    <form method="POST" id="formNuevoSocio">
+        <div style="margin-bottom: 1rem;">
+            <label for="nombre">Nombre completo</label>
+            <input type="text" name="nombre" id="nombre" required placeholder="Ej: Juan Pérez" autofocus>
+        </div>
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <a href="{{ url_for('listar_socios') }}" class="btn-secondary" style="background:#6b7280;">Cancelar</a>
+            <button type="submit" class="btn">✅ Guardar socio</button>
+        </div>
+    </form>
+</div>
+<script>
+    document.getElementById('formNuevoSocio').addEventListener('submit', function(e) {
+        if(document.getElementById('nombre').value.trim() === '') {
+            e.preventDefault();
+            showToast('El nombre es obligatorio', 'error');
+        }
+    });
+</script>
+{% endblock %}

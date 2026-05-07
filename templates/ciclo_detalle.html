@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Ciclo #{{ ciclo.id }} - {{ ciclo.producto }}{% endblock %}
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h1>🔄 Ciclo #{{ ciclo.id }}: {{ ciclo.producto }}</h1>
+        <a href="{{ url_for('listar_ciclos') }}" class="btn-secondary">← Todos los ciclos</a>
+    </div>
+    <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px,1fr));">
+        <div class="stats-card"><div>📦 Proveedor</div><strong>{{ ciclo.proveedor }}</strong></div>
+        <div class="stats-card"><div>💰 Precio compra</div><strong>${{ ciclo.precio_compra }}</strong></div>
+        <div class="stats-card"><div>💵 Precio venta est.</div><strong>${{ ciclo.precio_venta_estimado }}</strong></div>
+        <div class="stats-card"><div>📊 Total compra</div><strong>${{ "%.2f"|format(ciclo.total_compra) }}</strong></div>
+    </div>
+    <div style="background:#f1f5f9; border-radius: 16px; padding: 1rem; margin: 1rem 0;">
+        <p><strong>Estado:</strong> {% if ciclo.estado == 'abierto' %}🟢 Abierto{% else %}🔒 Cerrado el {{ ciclo.fecha_cierre[:16] }}{% endif %}</p>
+        <p><strong>Unidades:</strong> Vendidas {{ total_vendido }} / {{ ciclo.cantidad }} (restan {{ restante }})</p>
+        <p><strong>Ganancia esperada:</strong> ${{ "%.2f"|format(ganancia_esperada) }} | <strong>Ganancia realizada:</strong> ${{ "%.2f"|format(ganancia_realizada) }}</p>
+    </div>
+
+    <h3>👥 Aportes de socios</h3>
+    <table>
+        <thead><tr><th>Socio</th><th>Aporte</th><th>% participación</th></tr></thead>
+        <tbody>
+            {% for a in aportes %}
+            <tr>
+                <td data-label="Socio">{{ a.nombre }}</td>
+                <td data-label="Aporte">${{ "%.2f"|format(a.monto) }}</td>
+                <td data-label="%">{{ "%.1f"|format((a.monto / ciclo.total_compra)*100) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: 2rem 0 1rem 0;">
+        <h3>📝 Ventas registradas</h3>
+        {% if ciclo.estado == 'abierto' and restante > 0 %}
+        <a href="{{ url_for('nueva_venta', id=ciclo.id) }}" class="btn">➕ Registrar venta</a>
+        {% endif %}
+    </div>
+    <div style="overflow-x: auto;">
+        <table>
+            <thead><tr><th>Cantidad</th><th>Precio unit.</th><th>Total</th><th>Tipo</th><th>Pagado</th><th>Fecha</th><th>Acción</th></tr></thead>
+            <tbody>
+                {% for v in ventas %}
+                <tr>
+                    <td data-label="Cantidad">{{ v.cantidad }}</td>
+                    <td data-label="Precio unit.">${{ v.precio_unitario }}</td>
+                    <td data-label="Total">${{ v.total }}</td>
+                    <td data-label="Tipo">{{ v.tipo|capitalize }}</td>
+                    <td data-label="Pagado">{% if v.pagado %}✅ Sí{% else %}⏳ Pendiente{% endif %}</td>
+                    <td data-label="Fecha">{{ v.fecha[:16] }}</td>
+                    <td data-label="Acción">
+                        {% if v.tipo == 'pasador' and not v.pagado %}
+                        <form method="POST" action="{{ url_for('pagar_pasador', venta_id=v.id) }}" data-confirm="¿Registrar pago del pasador?">
+                            <button type="submit" class="btn-secondary" style="background:#10b981;">💰 Cobrar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7">Sin ventas registradas aún.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if ciclo.estado == 'abierto' and total_vendido == ciclo.cantidad and restante == 0 %}
+    <form method="POST" action="{{ url_for('cerrar_ciclo', id=ciclo.id) }}" data-confirm="Cerrar ciclo distribuirá las ganancias a los socios. ¿Continuar?" style="margin-top: 1rem;">
+        <button type="submit" class="btn-warning">🔒 Cerrar ciclo y distribuir ganancias</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}
