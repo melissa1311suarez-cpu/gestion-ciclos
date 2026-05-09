@@ -4,11 +4,13 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <h1>🔄 Ciclo #{{ ciclo.id }}: {{ ciclo.producto }}</h1>
+        <a href="{{ url_for('listar_ciclos') }}" class="btn-secondary">← Todos los ciclos</a>
+    </div>
+    <div>
         <p class="note" style="background: #e0f2fe; padding: 0.5rem; border-radius: 8px; font-size: 0.9rem;">
             💡 <strong>Nota:</strong> Cada venta (cliente o pasador pagado) actualiza <strong>inmediatamente</strong> el fondo disponible de los socios según su participación. Así pueden reinvertir las ganancias en otros ciclos sin esperar a que este ciclo se cierre.
         </p>
-        <a href="{{ url_for('listar_ciclos') }}" class="btn-secondary">← Todos los ciclos</a>
-    </div>
+    </div>    
     <div class="grid-cards" style="grid-template-columns: repeat(auto-fit, minmax(200px,1fr));">
         <div class="stats-card"><div>📦 Proveedor</div><strong>{{ ciclo.proveedor }}</strong></div>
         <div class="stats-card"><div>💰 Precio compra</div><strong>${{ ciclo.precio_compra }}</strong></div>
