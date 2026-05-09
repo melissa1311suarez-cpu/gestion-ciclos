@@ -2,7 +2,16 @@ import sqlite3
 import os
 from datetime import datetime
 
-DATABASE = 'gestion.db'
+# 🔧 SOLUCIÓN: Usar ruta persistente en Render
+# Si estamos en Render, guardar la BD en una carpeta que no se borre
+if os.environ.get('RENDER'):
+    # En Render, usar la carpeta /opt/render/project/src (persistente)
+    DATABASE = os.path.join(os.getcwd(), 'gestion.db')
+else:
+    # En local, usar el mismo directorio
+    DATABASE = 'gestion.db'
+
+print(f"📁 Base de datos en: {os.path.abspath(DATABASE)}")  # Para depuración
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -88,7 +97,7 @@ def crear_tabla_usuarios():
     admin = conn.execute('SELECT * FROM usuario WHERE username = "admin"').fetchone()
     if not admin:
         conn.execute('INSERT INTO usuario (username, password_hash) VALUES (?, ?)',
-                     ('admin', generate_password_hash('Elija una contraseña')))
+                     ('admin', generate_password_hash('admin123')))  # Contraseña: admin123
         conn.commit()
     conn.close()
 
@@ -129,7 +138,6 @@ def agregar_fondo_socio(socio_id, monto):
 def retirar_fondo_socio(socio_id, monto):
     conn = get_db()
     conn.execute('UPDATE socio SET fondo_disponible = fondo_disponible - ? WHERE id = ?', (monto, socio_id))
-    # fondo_total no se toca porque es histórico?
     conn.execute('INSERT INTO movimiento_fondo (socio_id, monto, descripcion) VALUES (?, ?, ?)',
                  (socio_id, -monto, 'Retiro manual'))
     conn.commit()
@@ -181,9 +189,7 @@ def crear_ciclo(producto, proveedor, cantidad, precio_compra, precio_venta, tota
     for socio_id, monto in aportes.items():
         cursor.execute('INSERT INTO aporte_ciclo (ciclo_id, socio_id, monto) VALUES (?, ?, ?)',
                        (ciclo_id, socio_id, monto))
-        # Descontar del fondo disponible
         cursor.execute('UPDATE socio SET fondo_disponible = fondo_disponible - ? WHERE id = ?', (monto, socio_id))
-        # Registrar movimiento negativo (inversión)
         cursor.execute('INSERT INTO movimiento_fondo (socio_id, monto, descripcion) VALUES (?, ?, ?)',
                        (socio_id, -monto, f'Inversión en ciclo #{ciclo_id}'))
     conn.commit()
@@ -213,15 +219,6 @@ def registrar_venta(ciclo_id, cantidad, precio_unitario, total, tipo, pagado):
         VALUES (?, ?, ?, ?, ?, ?)
     ''', (ciclo_id, cantidad, precio_unitario, total, tipo, pagado))
     conn.commit()
-    conn.close()
-    
-def registrar_venta(ciclo_id, cantidad, precio_unitario, total, tipo, pagado):
-    conn = get_db()
-    conn.execute('''
-        INSERT INTO venta (ciclo_id, cantidad, precio_unitario, total, tipo, pagado)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (ciclo_id, cantidad, precio_unitario, total, tipo, pagado))
-    conn.commit()
     # Si es cliente (pago inmediato), distribuimos ahora
     if tipo == 'cliente' and pagado == 1:
         distribuir_venta(ciclo_id, cantidad, precio_unitario)
@@ -239,37 +236,35 @@ def marcar_venta_pagada(venta_id):
     if venta and venta['pagado'] == 0:
         conn.execute('UPDATE venta SET pagado = 1 WHERE id = ?', (venta_id,))
         conn.commit()
-        # Distribuir la venta ahora que está pagada
         distribuir_venta(venta['ciclo_id'], venta['cantidad'], venta['precio_unitario'])
     conn.close()
 
 def distribuir_venta(ciclo_id, cantidad, precio_unitario):
-    """Distribuye el ingreso de una venta entre los socios del ciclo.
-       Actualiza el fondo_disponible de cada socio y registra movimientos."""
+    """Distribuye el ingreso de una venta entre los socios del ciclo."""
     conn = get_db()
     ciclo = conn.execute('SELECT * FROM ciclo WHERE id = ?', (ciclo_id,)).fetchone()
     if not ciclo:
         conn.close()
         raise Exception('Ciclo no encontrado')
     
-    # Obtener aportes de socios en este ciclo
     aportes = conn.execute('SELECT * FROM aporte_ciclo WHERE ciclo_id = ?', (ciclo_id,)).fetchall()
     total_aportado = sum(a['monto'] for a in aportes)
     
-    # Calcular costo de las unidades vendidas (precio_compra * cantidad)
+    if total_aportado == 0:
+        conn.close()
+        return
+    
     costo_unidad = ciclo['precio_compra']
     costo_total = costo_unidad * cantidad
     ingreso_total = precio_unitario * cantidad
     ganancia_total = ingreso_total - costo_total
     
-    # Distribuir entre socios según su % de aporte
     for a in aportes:
         porcentaje = a['monto'] / total_aportado
         costo_parte = costo_total * porcentaje
         ganancia_parte = ganancia_total * porcentaje
-        total_a_socio = costo_parte + ganancia_parte  # devolución inversión + ganancia
+        total_a_socio = costo_parte + ganancia_parte
         
-        # Actualizar fondo disponible del socio
         conn.execute('UPDATE socio SET fondo_disponible = fondo_disponible + ? WHERE id = ?', (total_a_socio, a['socio_id']))
         conn.execute('''
             INSERT INTO movimiento_fondo (socio_id, monto, descripcion)
