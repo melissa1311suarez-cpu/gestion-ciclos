@@ -2,16 +2,18 @@ import sqlite3
 import os
 from datetime import datetime
 
-# 🔧 SOLUCIÓN: Usar ruta persistente en Render
-# Si estamos en Render, guardar la BD en una carpeta que no se borre
+# 🔧 SOLUCIÓN DEFINITIVA: Usar una ruta que Render PERSISTE
 if os.environ.get('RENDER'):
-    # En Render, usar la carpeta /opt/render/project/src (persistente)
-    DATABASE = os.path.join(os.getcwd(), 'gestion.db')
+    # Esta carpeta es persistente en Render (incluso en plan gratuito)
+    DATA_DIR = '/opt/render/project/data'
+    # Crear la carpeta si no existe
+    os.makedirs(DATA_DIR, exist_ok=True)
+    DATABASE = os.path.join(DATA_DIR, 'gestion.db')
 else:
-    # En local, usar el mismo directorio
+    # En local, usar el directorio actual
     DATABASE = 'gestion.db'
 
-print(f"📁 Base de datos en: {os.path.abspath(DATABASE)}")  # Para depuración
+print(f"📁 Base de datos en: {os.path.abspath(DATABASE)}")
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
