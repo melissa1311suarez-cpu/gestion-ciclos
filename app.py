@@ -15,7 +15,7 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Inicializar la base de datos si no existe
-models.init_db()
+# models.init_db()
 
 class User(UserMixin):
     def __init__(self, id, username):
