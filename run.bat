@@ -1,4 +1,4 @@
 @echo off
-call venv\Scripts\activate.bat
+call venv_clean\Scripts\activate.bat
 python app.py
 pause

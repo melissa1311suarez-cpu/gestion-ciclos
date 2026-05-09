@@ -65,8 +65,38 @@ def init_db():
             FOREIGN KEY (socio_id) REFERENCES socio(id)
         );
     ''')
+    crear_tabla_usuarios()
     conn.commit()
     conn.close()
+
+# -------------------- USUARIOS (LOGIN) --------------------
+def crear_tabla_usuarios():
+    """Crea la tabla de usuarios si no existe y agrega un usuario admin por defecto"""
+    conn = get_db()
+    # Crear tabla
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS usuario (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+    
+    # Insertar usuario admin por defecto (si no existe)
+    from werkzeug.security import generate_password_hash
+    admin = conn.execute('SELECT * FROM usuario WHERE username = "admin"').fetchone()
+    if not admin:
+        conn.execute('INSERT INTO usuario (username, password_hash) VALUES (?, ?)',
+                     ('admin', generate_password_hash('Elija una contraseña')))
+        conn.commit()
+    conn.close()
+
+def obtener_usuario_por_username(username):
+    conn = get_db()
+    user = conn.execute('SELECT * FROM usuario WHERE username = ?', (username,)).fetchone()
+    conn.close()
+    return user
 
 # -------------------- SOCIOS --------------------
 def obtener_socios():
@@ -184,6 +214,18 @@ def registrar_venta(ciclo_id, cantidad, precio_unitario, total, tipo, pagado):
     ''', (ciclo_id, cantidad, precio_unitario, total, tipo, pagado))
     conn.commit()
     conn.close()
+    
+def registrar_venta(ciclo_id, cantidad, precio_unitario, total, tipo, pagado):
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO venta (ciclo_id, cantidad, precio_unitario, total, tipo, pagado)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (ciclo_id, cantidad, precio_unitario, total, tipo, pagado))
+    conn.commit()
+    # Si es cliente (pago inmediato), distribuimos ahora
+    if tipo == 'cliente' and pagado == 1:
+        distribuir_venta(ciclo_id, cantidad, precio_unitario)
+    conn.close()
 
 def obtener_venta(venta_id):
     conn = get_db()
@@ -193,7 +235,47 @@ def obtener_venta(venta_id):
 
 def marcar_venta_pagada(venta_id):
     conn = get_db()
-    conn.execute('UPDATE venta SET pagado = 1 WHERE id = ?', (venta_id,))
+    venta = conn.execute('SELECT * FROM venta WHERE id = ?', (venta_id,)).fetchone()
+    if venta and venta['pagado'] == 0:
+        conn.execute('UPDATE venta SET pagado = 1 WHERE id = ?', (venta_id,))
+        conn.commit()
+        # Distribuir la venta ahora que está pagada
+        distribuir_venta(venta['ciclo_id'], venta['cantidad'], venta['precio_unitario'])
+    conn.close()
+
+def distribuir_venta(ciclo_id, cantidad, precio_unitario):
+    """Distribuye el ingreso de una venta entre los socios del ciclo.
+       Actualiza el fondo_disponible de cada socio y registra movimientos."""
+    conn = get_db()
+    ciclo = conn.execute('SELECT * FROM ciclo WHERE id = ?', (ciclo_id,)).fetchone()
+    if not ciclo:
+        conn.close()
+        raise Exception('Ciclo no encontrado')
+    
+    # Obtener aportes de socios en este ciclo
+    aportes = conn.execute('SELECT * FROM aporte_ciclo WHERE ciclo_id = ?', (ciclo_id,)).fetchall()
+    total_aportado = sum(a['monto'] for a in aportes)
+    
+    # Calcular costo de las unidades vendidas (precio_compra * cantidad)
+    costo_unidad = ciclo['precio_compra']
+    costo_total = costo_unidad * cantidad
+    ingreso_total = precio_unitario * cantidad
+    ganancia_total = ingreso_total - costo_total
+    
+    # Distribuir entre socios según su % de aporte
+    for a in aportes:
+        porcentaje = a['monto'] / total_aportado
+        costo_parte = costo_total * porcentaje
+        ganancia_parte = ganancia_total * porcentaje
+        total_a_socio = costo_parte + ganancia_parte  # devolución inversión + ganancia
+        
+        # Actualizar fondo disponible del socio
+        conn.execute('UPDATE socio SET fondo_disponible = fondo_disponible + ? WHERE id = ?', (total_a_socio, a['socio_id']))
+        conn.execute('''
+            INSERT INTO movimiento_fondo (socio_id, monto, descripcion)
+            VALUES (?, ?, ?)
+        ''', (a['socio_id'], total_a_socio, f'Distribución venta en ciclo #{ciclo_id} (cantidad: {cantidad}, precio: {precio_unitario})'))
+    
     conn.commit()
     conn.close()
 
@@ -202,32 +284,16 @@ def cerrar_ciclo(ciclo_id):
     ciclo = conn.execute('SELECT * FROM ciclo WHERE id = ? AND estado = "abierto"', (ciclo_id,)).fetchone()
     if not ciclo:
         raise Exception('El ciclo no existe o ya está cerrado')
-
+    
     ventas = conn.execute('SELECT * FROM venta WHERE ciclo_id = ?', (ciclo_id,)).fetchall()
     total_vendido = sum(v['cantidad'] for v in ventas)
     if total_vendido != ciclo['cantidad']:
         raise Exception('No se han vendido todas las unidades')
-
+    
     pagados = all(v['pagado'] == 1 for v in ventas)
     if not pagados:
         raise Exception('Hay ventas de pasadores aún no pagadas')
-
-    ingreso_total = sum(v['total'] for v in ventas if v['pagado'] == 1)
-    ganancia = ingreso_total - ciclo['total_compra']
-
-    aportes = conn.execute('SELECT * FROM aporte_ciclo WHERE ciclo_id = ?', (ciclo_id,)).fetchall()
-    total_aportado = sum(a['monto'] for a in aportes)
-
-    for a in aportes:
-        parte_ganancia = (a['monto'] / total_aportado) * ganancia
-        total_a_socio = a['monto'] + parte_ganancia  # devolución inversión + ganancia
-        # Sumar al fondo disponible
-        conn.execute('UPDATE socio SET fondo_disponible = fondo_disponible + ? WHERE id = ?', (total_a_socio, a['socio_id']))
-        # Registrar movimiento positivo
-        conn.execute('INSERT INTO movimiento_fondo (socio_id, monto, descripcion) VALUES (?, ?, ?)',
-                     (a['socio_id'], total_a_socio, f'Ganancia y devolución del ciclo #{ciclo_id}'))
-
-    # Actualizar estado del ciclo
+    
     conn.execute('UPDATE ciclo SET estado = "cerrado", fecha_cierre = ? WHERE id = ?',
                  (datetime.now().isoformat(), ciclo_id))
     conn.commit()

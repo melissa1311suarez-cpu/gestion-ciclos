@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Iniciar sesión{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 400px; margin: 3rem auto;">
+    <h1 style="text-align: center;">🔐 Iniciar sesión</h1>
+    <form method="POST">
+        <div style="margin-bottom: 1rem;">
+            <label>Usuario</label>
+            <input type="text" name="username" required autofocus>
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label>Contraseña</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Ingresar</button>
+    </form>
+    <p style="text-align: center; margin-top: 1rem; color: #6b7280;">
+        Credenciales por defecto: <strong>admin / admin123</strong>
+    </p>
+</div>
+{% endblock %}

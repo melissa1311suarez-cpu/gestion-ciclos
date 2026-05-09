@@ -2,17 +2,64 @@ import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from models import obtener_socios, obtener_ciclos
-
-import models  # Nuestras funciones de BD y lógica
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import check_password_hash
+import models
 
 app = Flask(__name__)
-app.secret_key = 'clave-segura-para-sesiones-flash'
+app.secret_key = 'Elija una contraseña'
+app.config['SECRET_KEY'] = 'tu-clave-secreta-muy-segura-cambiala-en-produccion'  # ¡Cámbiala!
+
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
 
 # Inicializar la base de datos si no existe
 models.init_db()
 
+class User(UserMixin):
+    def __init__(self, id, username):
+        self.id = id
+        self.username = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    conn = models.get_db()
+    user_data = conn.execute('SELECT * FROM usuario WHERE id = ?', (user_id,)).fetchone()
+    conn.close()
+    if user_data:
+        return User(user_data['id'], user_data['username'])
+    return None
+
 # -------------------- RUTAS PRINCIPALES --------------------
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        user = models.obtener_usuario_por_username(username)
+        if user and check_password_hash(user['password_hash'], password):
+            user_obj = User(user['id'], user['username'])
+            login_user(user_obj)
+            flash('Inicio de sesión exitoso', 'success')
+            next_page = request.args.get('next')
+            return redirect(next_page or url_for('index'))
+        else:
+            flash('Usuario o contraseña incorrectos', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('Sesión cerrada correctamente', 'success')
+    return redirect(url_for('login'))
+
 @app.route('/')
+@login_required
 def index():
     socios = models.obtener_socios()
     ciclos = models.obtener_ciclos()
@@ -22,11 +69,13 @@ def index():
 
 # -------------------- SOCIOS --------------------
 @app.route('/socios')
+@login_required
 def listar_socios():
     socios = models.obtener_socios()
     return render_template('socios.html', socios=socios)
 
 @app.route('/socio/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_socio():
     if request.method == 'POST':
         nombre = request.form['nombre']
@@ -37,6 +86,7 @@ def nuevo_socio():
     return render_template('socio_nuevo.html')
 
 @app.route('/socio/<int:id>')
+@login_required
 def detalle_socio(id):
     socio = models.obtener_socio(id)
     movimientos = models.obtener_movimientos_socio(id)
@@ -44,6 +94,7 @@ def detalle_socio(id):
     return render_template('socio_detalle.html', socio=socio, movimientos=movimientos, participaciones=participaciones)
 
 @app.route('/socio/<int:id>/agregar_fondo', methods=['POST'])
+@login_required
 def agregar_fondo(id):
     monto = float(request.form['monto'])
     if monto > 0:
@@ -54,6 +105,7 @@ def agregar_fondo(id):
     return redirect(url_for('detalle_socio', id=id))
 
 @app.route('/socio/<int:id>/retirar_fondo', methods=['POST'])
+@login_required
 def retirar_fondo(id):
     monto = float(request.form['monto'])
     if monto <= 0:
@@ -69,11 +121,13 @@ def retirar_fondo(id):
 
 # -------------------- CICLOS (COMPRAS) --------------------
 @app.route('/ciclos')
+@login_required
 def listar_ciclos():
     ciclos = models.obtener_ciclos()
     return render_template('ciclos.html', ciclos=ciclos)
 
 @app.route('/ciclo/nuevo', methods=['GET', 'POST'])
+@login_required
 def nuevo_ciclo():
     if request.method == 'POST':
         producto = request.form['producto']
@@ -114,6 +168,7 @@ def nuevo_ciclo():
     return render_template('ciclo_nuevo.html', socios=socios)
 
 @app.route('/ciclo/<int:id>')
+@login_required
 def detalle_ciclo(id):
     ciclo = models.obtener_ciclo(id)
     aportes = models.obtener_aportes_ciclo(id)
@@ -129,6 +184,7 @@ def detalle_ciclo(id):
                            ganancia_realizada=ganancia_realizada, ganancia_esperada=ganancia_esperada)
 
 @app.route('/ciclo/<int:id>/cerrar', methods=['POST'])
+@login_required
 def cerrar_ciclo(id):
     try:
         models.cerrar_ciclo(id)
@@ -139,6 +195,7 @@ def cerrar_ciclo(id):
 
 # -------------------- VENTAS Y PASADORES --------------------
 @app.route('/ciclo/<int:id>/venta', methods=['GET', 'POST'])
+@login_required
 def nueva_venta(id):
     ciclo = models.obtener_ciclo(id)
     # Calcular cuánto se ha vendido hasta ahora
@@ -165,6 +222,7 @@ def nueva_venta(id):
     return render_template('venta_nueva.html', ciclo=ciclo, total_vendido=total_vendido)
     
 @app.route('/venta/<int:venta_id>/pagar', methods=['POST'])
+@login_required
 def pagar_pasador(venta_id):
     venta = models.obtener_venta(venta_id)
     if venta and venta['tipo'] == 'pasador' and venta['pagado'] == 0:
