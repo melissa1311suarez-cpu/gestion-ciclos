@@ -11,6 +11,15 @@ app.secret_key = 'tu_clave_secreta_cambiala_por_una_segura'
 
 # Base de datos con ruta ABSOLUTA y PERSISTENTE
 basedir = os.path.abspath(os.path.dirname(__file__))
+basedir = os.path.abspath(os.path.dirname(__file__))
+db_path = os.path.join(basedir, 'database', 'gestion.db')
+print(f"🔍 Ruta de la base de datos: {db_path}")
+print(f"🔍 ¿Existe el archivo? {os.path.exists(db_path)}")
+print(f"🔍 ¿Existe la carpeta database? {os.path.exists(os.path.join(basedir, 'database'))}")
+
+# Si existe, mostrar el tamaño
+if os.path.exists(db_path):
+    print(f"🔍 Tamaño del archivo: {os.path.getsize(db_path)} bytes")
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'database', 'gestion.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -422,6 +431,6 @@ with app.app_context():
         db.session.add(admin)
         db.session.commit()
         print("✅ Usuario admin creado")
-        
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
