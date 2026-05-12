@@ -29,6 +29,10 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+print(f"🔍 Ruta de la BD: {app.config['SQLALCHEMY_DATABASE_URI']}")
+import os
+print(f"🔍 ¿Existe? {os.path.exists(app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', ''))}")
+
 # ======================== MODELOS ========================
 
 class Socio(db.Model):
