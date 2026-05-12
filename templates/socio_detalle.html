@@ -7,10 +7,9 @@
         <a href="{{ url_for('listar_socios') }}" class="btn-secondary">← Volver</a>
     </div>
     <div style="background: #f1f5f9; padding: 1rem; border-radius: 16px; margin: 1rem 0;">
-        <p><strong>💰 Fondo disponible:</strong> ${{ "%.2f"|format(socio.fondo_disponible) }}
-            <span style="font-size: 0.85rem; color: #4b5563;">(Se actualiza con cada venta de los ciclos en los que participa)</span>
-        </p>
-        <p><strong>📈 Total histórico invertido:</strong> ${{ "%.2f"|format(socio.fondo_total - socio.fondo_disponible) }}</p>
+        <p><strong>💰 Fondo disponible:</strong> <span style="font-size: 1.8rem; font-weight: bold;">${{ "%.2f"|format(socio.fondo_disponible) }}</span></p>
+        <p><strong>📊 Total invertido en ciclos:</strong> ${{ "%.2f"|format(total_invertido_real) }}</p>
+        <p><strong>🏦 Fondo total histórico (aportes + ganancias):</strong> ${{ "%.2f"|format(socio.fondo_total) }}</p>
     </div>
 
     <h3>➕ Agregar / Retirar fondo</h3>
@@ -32,7 +31,7 @@
             <tbody>
                 {% for m in movimientos %}
                 <tr>
-                    <td data-label="Fecha">{{ m.fecha[:16] }}</td>
+                    <td data-label="Fecha">{{ m.fecha.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td data-label="Descripción">{{ m.descripcion }}</td>
                     <td data-label="Monto" style="color: {% if m.monto < 0 %}red{% else %}green{% endif %};">${{ "%.2f"|format(m.monto) }}</td>
                 </tr>

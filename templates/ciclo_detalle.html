@@ -54,7 +54,7 @@
                     <td data-label="Total">${{ v.total }}</td>
                     <td data-label="Tipo">{{ v.tipo|capitalize }}</td>
                     <td data-label="Pagado">{% if v.pagado %}✅ Sí{% else %}⏳ Pendiente{% endif %}</td>
-                    <td data-label="Fecha">{{ v.fecha[:16] }}</td>
+                    <td data-label="Fecha">{{ v.fecha.strftime('%Y-%m-%d %H:%M') if v.fecha else '' }}</td>
                     <td data-label="Acción">
                         {% if v.tipo == 'pasador' and not v.pagado %}
                         <form method="POST" action="{{ url_for('pagar_pasador', venta_id=v.id) }}" data-confirm="¿Registrar pago del pasador?">

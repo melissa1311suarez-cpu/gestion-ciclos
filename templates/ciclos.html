@@ -15,7 +15,7 @@
                 {% for c in ciclos %}
                 <tr>
                     <td data-label="ID">#{{ c.id }}</td>
-                    <td data-label="Fecha">{{ c.fecha_compra[:16] }}</td>
+                    <td data-label="Fecha">{{ c.fecha_compra.strftime('%Y-%m-%d %H:%M') }}</td>
                     <td data-label="Producto">{{ c.producto }}</td>
                     <td data-label="Proveedor">{{ c.proveedor }}</td>
                     <td data-label="Cantidad">{{ c.cantidad }} uds</td>
